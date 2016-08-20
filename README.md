@@ -46,9 +46,3 @@ monkeys.work(totalMonkeys, `
 ```
 
 For more examples, please check the [`examples`](https://github.com/MaiaVictor/WebMonkeys/tree/master/examples) directory.
-
-### Issues
-
-This is fresh out of the oven and completely untested, so, there are probably tons of bugs. The parser is awful and some valid code won't work; ideally, a proper DSL should be created. Moreover, due to the limits of WebGL 1.0 (and of my own creativity in circumventing them), it is not as efficient as it could be. There are some layers of inefficiency such as packing float (which now can be avoided) and shuffling data between intermediate textures. Spawning a new task is slow, but shader compilation is cached, so it is quite fast if you reuse the same source. There are limitations imposed by WebGL itself, such as only static indices on loops. Finally, the implementation could be improved; partly because I am still such a noob on WebGL. I plan to clean it up, add comments explaining how it works, write some benchmarks and tests eventually; but you're more than encouraged to contribute.
-
-Nether less, I think the core of the API is pretty solid, I really like it, and there is a lot of cool things going on under the hoods. I think it could maybe have some interesting applications already, and could get much better with some further work.
