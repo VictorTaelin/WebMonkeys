@@ -22,7 +22,7 @@ module.exports = function WebMonkeys(opt){
     monkeyIndexArray = [];
     opt = opt || [];
 
-    valueType = opt.valueType || "float"; 
+    valueType = opt.useRawBuffers ? "vec4" : "float"; 
 
     var glOpt = {antialias: false, preserveDrawingBuffer: true};
     if (typeof window === "undefined"){
@@ -176,10 +176,13 @@ module.exports = function WebMonkeys(opt){
     return x - Math.floor(x);
   };
 
-  // *{Monkeys}, String -> Array Number
-  function get(name){
+  // *{Monkeys}, String, *Uint32Array -> Array Number
+  // *{Monkeys}, String, () -> Array Number
+  function get(name, targetArray){
     var array = arrayByName[name];
-    var pixels = new Uint8Array(array.textureSide*array.textureSide*4);
+    var pixels = targetArray
+      ? new Uint8Array(targetArray.buffer)  // re-uses existing buffer
+      : new Uint8Array(array.textureSide*array.textureSide*4);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, array.texture, 0);
     gl.readPixels(0, 0, array.textureSide, array.textureSide, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
@@ -195,7 +198,7 @@ module.exports = function WebMonkeys(opt){
       };
       return result;
     } else {
-      return [].slice.call(pixels, 0);
+      return targetArray || new Uint32Array(pixels.buffer);
     }
   };
 
@@ -207,9 +210,9 @@ module.exports = function WebMonkeys(opt){
       var textureSide = fitTextureSide(length);
       var array = null;
     } else {
+      var length = lengthOrArray.length;
+      var textureSide = fitTextureSide(length);
       if (valueType === "float"){
-        var length = lengthOrArray.length;
-        var textureSide = fitTextureSide(length);
         var array = new Uint8Array(textureSide*textureSide*4);
         for (var i=0, l=lengthOrArray.length; i<l; ++i){ 
           var x = lengthOrArray[i];
@@ -222,9 +225,12 @@ module.exports = function WebMonkeys(opt){
           array[i*4+3] = ((e+63) + (x>0?128:0))||0;
         };
       } else {
-        var length = lengthOrArray.length/4;
-        var textureSide = fitTextureSide(length);
-        var array = new Uint8Array(lengthOrArray);
+        if (textureSide * textureSide !== length)
+          throw "WebMonkey error: when on raw buffer mode, the length of your\n"
+              + "buffer must be (2^n)^2 for a positive integer n. That is, it\n"
+              + "could be 1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144\n"
+              + "and so on. Your '"+name+"' buffer has length "+length+".";
+        var array = new Uint8Array(lengthOrArray.buffer);
       }
     }
     if (!arrayByName[name]){
@@ -412,9 +418,6 @@ module.exports = function WebMonkeys(opt){
       "  int idx = int((resultSquareSide-1.0-coord.y) * resultSquareSide + coord.x);",
       writeToTexture,
       "}"].join("\n");
-
-      console.log(vertexShader);
-      console.log(fragmentShader);
 
       var shader = buildShader(vertexShader, fragmentShader);
 
