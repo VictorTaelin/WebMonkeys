@@ -1,4 +1,4 @@
-module.exports = function WebMonkeys(){
+module.exports = function WebMonkeys(opt){
   var maxMonkeys,
     resultTextureSide,
     arrays,
@@ -9,7 +9,8 @@ module.exports = function WebMonkeys(){
     defaultLib,
     writer,
     resultTexture,
-    userLib;
+    userLib,
+    valueType;
 
   // *{GL} -> {GL}
   function init(){
@@ -19,13 +20,16 @@ module.exports = function WebMonkeys(){
     arrayByName = {};
     shaderByTask = {};
     monkeyIndexArray = [];
+    opt = opt || [];
 
-    var opt = {antialias: false, preserveDrawingBuffer: true};
+    valueType = opt.valueType || "float"; 
+
+    var glOpt = {antialias: false, preserveDrawingBuffer: true};
     if (typeof window === "undefined"){
-      gl = require("gl")(1, 1, opt);
+      gl = require("gl")(1, 1, glOpt);
     } else {
       canvas = document.createElement("canvas");
-      gl = canvas.getContext("webgl", opt);
+      gl = canvas.getContext("webgl", glOpt);
       gl.canvas.width = 1;
       gl.canvas.height = 1;
       gl.canvas.style = [
@@ -52,7 +56,6 @@ module.exports = function WebMonkeys(){
       "  return toA+(pos-fromA)/(fromB-fromA)*(toB-toA);",
       "}",
       "vec4 packFloat(float x){",
-      //"  return vec4(x)/255.0;",
       "  float s = x > 0.0 ? 1.0 : -1.0;",
       "  float e = floor(log2(s*x));",
       "  float m = s*x / pow(2.0, e);",
@@ -69,6 +72,12 @@ module.exports = function WebMonkeys(){
       "  float m = 1.0 + v.x/256.0/256.0/256.0 + v.y/256.0/256.0 + v.z/256.0;",
       "  return s * pow(2.0, e) * m;",
       "}",
+      "vec4 packVec4(vec4 v){",
+      "  return v/255.0;",
+      "}",
+      "vec4 unpackVec4(vec4 v){",
+      "  return v*255.0;",
+      "}",
       "vec4 packUint32(int i){",
       "  float v = float(i);",
       "  float r = mod(floor(v), 256.0);",
@@ -81,6 +90,7 @@ module.exports = function WebMonkeys(){
       "  return int(v.r*255.0 + v.g*255.0*256.0 + v.b*255.0*256.0*256.0 + v.a*255.0*256.0*256.0*256.0);",
       "}",
       ].join("\n");
+
     writer = buildShader(
       ["precision highp float;",
       "attribute float resultIndex;",
@@ -109,8 +119,6 @@ module.exports = function WebMonkeys(){
       "void main(){",
       "  gl_FragColor = value;",
       "}"].join("\n"));
-
-    gl.getExtension('OES_texture_float');
 
     var rangeBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, rangeBuffer);
@@ -175,16 +183,20 @@ module.exports = function WebMonkeys(){
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, array.texture, 0);
     gl.readPixels(0, 0, array.textureSide, array.textureSide, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-    var result = [];
-    for (var i=0, l=array.length; i<l; ++i){
-      var s = pixels[i*4+3] >= 128 ? 1 : -1;
-      var e = pixels[i*4+3] - (pixels[i*4+3] >= 128 ? 128 : 0) - 63;
-      var m = 1 + pixels[i*4+0]/256/256/256 + pixels[i*4+1]/256/256 + pixels[i*4+2]/256;
-      var n = s * Math.pow(2, e) * m;
-      var z = 0.000000000000000001; // to avoid annoying floating point error for 0
-      result.push(-z < n && n < z ? 0 : n);
-    };
-    return result;
+    if (valueType === "float"){
+      var result = [];
+      for (var i=0, l=array.length; i<l; ++i){
+        var s = pixels[i*4+3] >= 128 ? 1 : -1;
+        var e = pixels[i*4+3] - (pixels[i*4+3] >= 128 ? 128 : 0) - 63;
+        var m = 1 + pixels[i*4+0]/256/256/256 + pixels[i*4+1]/256/256 + pixels[i*4+2]/256;
+        var n = s * Math.pow(2, e) * m;
+        var z = 0.000000000000000001; // to avoid annoying floating point error for 0
+        result.push(-z < n && n < z ? 0 : n);
+      };
+      return result;
+    } else {
+      return [].slice.call(pixels, 0);
+    }
   };
 
   // *{Monkeys}, String, Array Number -> Monkeys
@@ -195,19 +207,25 @@ module.exports = function WebMonkeys(){
       var textureSide = fitTextureSide(length);
       var array = null;
     } else {
-      var length = lengthOrArray.length;
-      var textureSide = fitTextureSide(length);
-      var array = new Uint8Array(textureSide*textureSide*4);
-      for (var i=0, l=lengthOrArray.length; i<l; ++i){ 
-        var x = lengthOrArray[i];
-        var s = x > 0 ? 1 : -1;
-        var e = Math.floor(Math.log2(s*x));
-        var m = s*x/Math.pow(2, e);
-        array[i*4+0] = Math.floor(fract((m-1)*256*256)*256)||0;
-        array[i*4+1] = Math.floor(fract((m-1)*256)*256)||0;
-        array[i*4+2] = Math.floor(fract((m-1)*1)*256)||0;
-        array[i*4+3] = ((e+63) + (x>0?128:0))||0;
-      };
+      if (valueType === "float"){
+        var length = lengthOrArray.length;
+        var textureSide = fitTextureSide(length);
+        var array = new Uint8Array(textureSide*textureSide*4);
+        for (var i=0, l=lengthOrArray.length; i<l; ++i){ 
+          var x = lengthOrArray[i];
+          var s = x > 0 ? 1 : -1;
+          var e = Math.floor(Math.log2(s*x));
+          var m = s*x/Math.pow(2, e);
+          array[i*4+0] = Math.floor(fract((m-1)*256*256)*256)||0;
+          array[i*4+1] = Math.floor(fract((m-1)*256)*256)||0;
+          array[i*4+2] = Math.floor(fract((m-1)*1)*256)||0;
+          array[i*4+3] = ((e+63) + (x>0?128:0))||0;
+        };
+      } else {
+        var length = lengthOrArray.length/4;
+        var textureSide = fitTextureSide(length);
+        var array = new Uint8Array(lengthOrArray);
+      }
     }
     if (!arrayByName[name]){
       var texture = gl.createTexture();
@@ -330,19 +348,19 @@ module.exports = function WebMonkeys(){
     for (var i=0, l=arrays.length; i<l; ++i)
       getters 
         += "uniform sampler2D "+arrays[i].textureName+";\n"
-        +  "float "+arrays[i].name+"(float idx){\n"
-        +  "  return unpackFloat(texture2D("+arrays[i].textureName+",indexToPos(vec2("+arrays[i].textureSide.toFixed(1)+"), idx)/"+arrays[i].textureSide.toFixed(2)+"));\n"
+        +  valueType+" "+arrays[i].name+"(float idx){\n"
+        +  "  return "+(valueType==="float"?"unpackFloat":"unpackVec4")+"(texture2D("+arrays[i].textureName+",indexToPos(vec2("+arrays[i].textureSide.toFixed(1)+"), idx)/"+arrays[i].textureSide.toFixed(2)+"));\n"
         +  "}\n"
-        +  "float "+arrays[i].name+"(int idx){\n"
+        +  valueType+" "+arrays[i].name+"(int idx){\n"
         +  "  return "+arrays[i].name+"(float(idx));\n"
         +  "}\n";
 
     var setterFn = "void set(";
     for (var i=0; i<maxResults; ++i)
-      setterFn += "int k"+i+", float v"+i+(i<maxResults-1?", ":"");
+      setterFn += "int k"+i+", "+valueType+" v"+i+(i<maxResults-1?", ":"");
     setterFn += "){\n";
     for (var i=0; i<maxResults; ++i)
-      setterFn += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1), results["+(i*2+1)+"] = packFloat(v"+i+");\n";
+      setterFn += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1), results["+(i*2+1)+"] = "+(valueType==="float"?"packFloat":"packVec4")+"(v"+i+");\n";
     setterFn += "}";
 
     var writeToTexture = "";
@@ -353,7 +371,7 @@ module.exports = function WebMonkeys(){
     for (var i=0; i < maxResults; ++i)
       setter += (i < usedResults 
         ? setters[i].index+", "+setters[i].value
-        : "-1, 0.0")
+        : "-1, "+(valueType==="float"?"0.0":"vec4(0.0)"))
         + (i < maxResults-1 ? ",\n      " : "");
     setter += ");";
 
@@ -366,6 +384,7 @@ module.exports = function WebMonkeys(){
       "varying float resultIndexVar;",
       "varying vec4 results[16];",
       defaultLib,
+      userLib,
       getters,
       setterFn,
       "vec4 scaleToScreen(vec2 pos){",
@@ -382,8 +401,6 @@ module.exports = function WebMonkeys(){
       "  resultIndexVar = resultIndex;",
       "}"].join("\n")
 
-    //console.log(vertexShader);
-
     var fragmentShader = [
       "precision highp float;",
       "varying float resultIndexVar;",
@@ -396,7 +413,8 @@ module.exports = function WebMonkeys(){
       writeToTexture,
       "}"].join("\n");
 
-    //console.log(fragmentShader);
+      console.log(vertexShader);
+      console.log(fragmentShader);
 
       var shader = buildShader(vertexShader, fragmentShader);
 
@@ -454,7 +472,6 @@ module.exports = function WebMonkeys(){
   // *{Monkeys} -> Monkeys
   function lib(source){
     userLib = source;
-    throw "Not implemented yet.";
     return monkeysApi;
   };
 
