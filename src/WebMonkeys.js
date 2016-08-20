@@ -273,7 +273,7 @@ module.exports = function WebMonkeys(opt){
   //   foo(i*8) := bar(i*8) + baz(i*8);
   // And returns `name`, `index` and `value` strings:
   //   {name: "foo", index: "i*8", value: "bar[i*8] + baz[i*8]"}
-  // String -> {name: String, index: String, value: String}
+  // String -> Maybe {name: String, index: String, value: String}
   function parseSetterStatement(statement){
     var name = "";
     var index = "";
@@ -472,7 +472,7 @@ module.exports = function WebMonkeys(opt){
     gl.drawArrays(gl.POINTS, 0, monkeyCount*resultSquareSide*resultSquareSide/2);
   };
 
-  // *{Monkeys} -> Monkeys
+  // *{Monkeys}, String -> Monkeys
   function lib(source){
     userLib = source;
     return monkeysApi;
