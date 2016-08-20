@@ -1,0 +1,27 @@
+{
+  "name": "webmonkeys",
+  "version": "1.0.0",
+  "description": "Stupid simple lib for massively parallel programming with JavaScript.",
+  "main": "src/WebMonkeys.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maiavictor/webmonkeys.git"
+  },
+  "keywords": [
+    "webgl",
+    "parallel",
+    "primates"
+  ],
+  "author": "MaiaVictor",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/maiavictor/webmonkeys/issues"
+  },
+  "homepage": "https://github.com/maiavictor/webmonkeys#readme",
+  "dependencies": {
+    "gl": "^4.0.2"
+  }
+}
