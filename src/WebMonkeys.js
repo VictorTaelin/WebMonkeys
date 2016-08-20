@@ -270,7 +270,7 @@ module.exports = function WebMonkeys(opt){
   };
 
   // Parses a setter statement such as:
-  //   foo[i*8] = bar[i*8] + baz[i*8];
+  //   foo(i*8) := bar(i*8) + baz(i*8);
   // And returns `name`, `index` and `value` strings:
   //   {name: "foo", index: "i*8", value: "bar[i*8] + baz[i*8]"}
   // String -> {name: String, index: String, value: String}
