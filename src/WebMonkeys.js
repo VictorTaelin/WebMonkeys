@@ -492,6 +492,7 @@ module.exports = function WebMonkeys(opt){
     set: set,
     get: get,
     del: del,
+    lib: lib,
     work: work,
     stringify: stringify,
     log: log
