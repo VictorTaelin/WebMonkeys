@@ -1,6 +1,6 @@
 ## WebMonkeys
 
-Allows you to spawn thousands of parallel tasks on the GPU with the simplest, dumbest API possible. It works on the browser (with browserify) and on Node.js. Is ES5-compatible and doesn't require any WebGL extension.
+Allows you to spawn thousands of parallel tasks on the GPU with the simplest, dumbest API possible. It works on the browser (with browserify) and on Node.js. It is ES5-compatible and doesn't require any WebGL extension.
 
 ### Usage
 
