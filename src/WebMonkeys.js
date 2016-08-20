@@ -14,13 +14,13 @@ module.exports = function WebMonkeys(opt){
 
   // *{GL} -> {GL}
   function init(){
-    maxMonkeys = 256*256;
-    resultTextureSide = 4096;
+    opt = opt || [];
+    maxMonkeys = opt.maxMonkeys || 2048*2048;
+    resultTextureSide = opt.resultTextureSide || 2048;
     arrays = [];
     arrayByName = {};
     shaderByTask = {};
     monkeyIndexArray = [];
-    opt = opt || [];
 
     valueType = opt.useRawBuffers ? "vec4" : "float"; 
 
@@ -388,7 +388,7 @@ module.exports = function WebMonkeys(opt){
       "uniform float resultSquareSide;",
       "attribute float resultIndex;",
       "varying float resultIndexVar;",
-      "varying vec4 results[16];",
+      "varying vec4 results["+(maxResults*2)+"];",
       defaultLib,
       userLib,
       getters,
@@ -410,7 +410,7 @@ module.exports = function WebMonkeys(opt){
     var fragmentShader = [
       "precision highp float;",
       "varying float resultIndexVar;",
-      "varying vec4 results[16];",
+      "varying vec4 results["+(maxResults*2)+"];",
       "uniform float resultSquareSide;",
       defaultLib,
       "void main(){",
