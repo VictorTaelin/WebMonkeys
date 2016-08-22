@@ -8,9 +8,12 @@ module.exports = function WebMonkeys(opt){
     gl,
     defaultLib,
     writer,
+    renderer,
     resultTexture,
     userLib,
-    valueType;
+    framebuffer,
+    rangeBuffer,
+    rendererVertexBuffer;
 
   // *{GL} -> {GL}
   function init(){
@@ -22,14 +25,13 @@ module.exports = function WebMonkeys(opt){
     shaderByTask = {};
     monkeyIndexArray = [];
 
-    valueType = opt.useRawBuffers ? "vec4" : "float"; 
-
     var glOpt = {antialias: false, preserveDrawingBuffer: true};
     if (typeof window === "undefined"){
       gl = require("gl")(1, 1, glOpt);
     } else {
-      canvas = document.createElement("canvas");
+      var canvas = document.createElement("canvas");
       gl = canvas.getContext("webgl", glOpt);
+      gl.canvas = canvas;
       gl.canvas.width = 1;
       gl.canvas.height = 1;
       gl.canvas.style = [
@@ -42,6 +44,8 @@ module.exports = function WebMonkeys(opt){
         "-ms-interpolation-mode: nearest-neighbor;"].join("");
     }
 
+    // FIXME: this causes a small slowdown on startup; a better behavior
+    // would be to dynamically alloc a bigger buffer on demand
     for (var i=0; i<maxMonkeys; ++i)
       monkeyIndexArray[i] = i; 
 
@@ -120,9 +124,30 @@ module.exports = function WebMonkeys(opt){
       "  gl_FragColor = value;",
       "}"].join("\n"));
 
-    var rangeBuffer = gl.createBuffer();
+    renderer = buildShader(
+      ["precision highp float;",
+      "attribute vec2 vertexPos;",
+      "varying vec2 pos;",
+      "void main(){",
+      "  pos = vertexPos;",
+      "  gl_Position = vec4(vertexPos, 0.0, 1.0);",
+      "}"].join("\n"),
+      ["precision mediump float;",
+      "uniform sampler2D array;",
+      "varying vec2 pos;",
+      "void main(){",
+      "  gl_FragColor = texture2D(array, pos*0.5+0.5);",
+      //"  gl_FragColor = vec4(1.0, 0.5, 0.5, 1.0);",
+      "}"].join("\n"));
+
+    rendererVertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, rendererVertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1,1,-1,-1,1,-1,1,1,-1,1,-1,-1]), gl.STATIC_DRAW);
+
+    rangeBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, rangeBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(monkeyIndexArray), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     resultTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0);
@@ -133,7 +158,7 @@ module.exports = function WebMonkeys(opt){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, resultTextureSide, resultTextureSide, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
-    var framebuffer = gl.createFramebuffer();
+    framebuffer = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
     return monkeysApi;
@@ -176,17 +201,17 @@ module.exports = function WebMonkeys(opt){
     return x - Math.floor(x);
   };
 
-  // *{Monkeys}, String, *Uint32Array -> Array Number
-  // *{Monkeys}, String, () -> Array Number
-  function get(name, targetArray){
+  // *{Monkeys}, String -> Either (Array Number) Uint32Array
+  function get(name){
     var array = arrayByName[name];
+    var targetArray = array.uint32Array;
     var pixels = targetArray
       ? new Uint8Array(targetArray.buffer)  // re-uses existing buffer
       : new Uint8Array(array.textureSide*array.textureSide*4);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, array.texture, 0);
     gl.readPixels(0, 0, array.textureSide, array.textureSide, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-    if (valueType === "float"){
+    if (!targetArray){
       var result = [];
       for (var i=0, l=array.length; i<l; ++i){
         var s = pixels[i*4+3] >= 128 ? 1 : -1;
@@ -198,10 +223,11 @@ module.exports = function WebMonkeys(opt){
       };
       return result;
     } else {
-      return targetArray || new Uint32Array(pixels.buffer);
+      return targetArray;
     }
   };
 
+  // *{Monkeys}, String, Uint32Array -> Monkeys
   // *{Monkeys}, String, Array Number -> Monkeys
   // *{Monkeys}, String, Number -> Monkeys
   function set(name, lengthOrArray){
@@ -212,7 +238,7 @@ module.exports = function WebMonkeys(opt){
     } else {
       var length = lengthOrArray.length;
       var textureSide = fitTextureSide(length);
-      if (valueType === "float"){
+      if (lengthOrArray instanceof Array) { // upload JS Numbers as Floats
         var array = new Uint8Array(textureSide*textureSide*4);
         for (var i=0, l=lengthOrArray.length; i<l; ++i){ 
           var x = lengthOrArray[i];
@@ -224,7 +250,7 @@ module.exports = function WebMonkeys(opt){
           array[i*4+2] = Math.floor(fract((m-1)*1)*256)||0;
           array[i*4+3] = ((e+63) + (x>0?128:0))||0;
         };
-      } else {
+      } else { // upload 32-bit Uints as Vec4s
         if (textureSide * textureSide !== length)
           throw "WebMonkey error: when on raw buffer mode, the length of your\n"
               + "buffer must be (2^n)^2 for a positive integer n. That is, it\n"
@@ -233,9 +259,9 @@ module.exports = function WebMonkeys(opt){
         var array = new Uint8Array(lengthOrArray.buffer);
       }
     }
+    gl.activeTexture(gl.TEXTURE0);
     if (!arrayByName[name]){
       var texture = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -244,6 +270,8 @@ module.exports = function WebMonkeys(opt){
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureSide, textureSide, 0, gl.RGBA, gl.UNSIGNED_BYTE, array);
       arrayByName[name] = {
         name: name,
+        uint32Array: lengthOrArray instanceof Uint32Array ? lengthOrArray : null,
+        valueType: lengthOrArray instanceof Uint32Array ? "vec4" : "float",
         texture: texture,
         textureName: name+"_",
         textureSide: textureSide,
@@ -251,6 +279,7 @@ module.exports = function WebMonkeys(opt){
       arrays.push(arrayByName[name]);
     } else {
       var texture = arrayByName[name].texture;
+      gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureSide, textureSide, 0, gl.RGBA, gl.UNSIGNED_BYTE, array);
     }
     return monkeysApi;
@@ -345,7 +374,7 @@ module.exports = function WebMonkeys(opt){
       if (setters[i].name !== resultArrayName)
         throw "Error parsing Monkey task: you can't write to different arrays on the same task.";
 
-    var taskWithoutSetter = taskStatements.join(";")+";";
+    var taskWithoutSetters = taskStatements.join(";")+";";
 
     var usedResults = setters.length;
     var maxResults = Math.pow(fitTextureSide(usedResults*2),2)/2;
@@ -354,32 +383,37 @@ module.exports = function WebMonkeys(opt){
     for (var i=0, l=arrays.length; i<l; ++i)
       getters 
         += "uniform sampler2D "+arrays[i].textureName+";\n"
-        +  valueType+" "+arrays[i].name+"(float idx){\n"
-        +  "  return "+(valueType==="float"?"unpackFloat":"unpackVec4")+"(texture2D("+arrays[i].textureName+",indexToPos(vec2("+arrays[i].textureSide.toFixed(1)+"), idx)/"+arrays[i].textureSide.toFixed(2)+"));\n"
+        +  arrays[i].valueType+" "+arrays[i].name+"(float idx){\n"
+        +  "  return "+(arrays[i].valueType==="float"?"unpackFloat":"unpackVec4")+"(texture2D("+arrays[i].textureName+",indexToPos(vec2("+arrays[i].textureSide.toFixed(1)+"), idx)/"+arrays[i].textureSide.toFixed(2)+"));\n"
         +  "}\n"
-        +  valueType+" "+arrays[i].name+"(int idx){\n"
+        +  arrays[i].valueType+" "+arrays[i].name+"(int idx){\n"
         +  "  return "+arrays[i].name+"(float(idx));\n"
         +  "}\n";
 
-    var setterFn = "void set(";
-    for (var i=0; i<maxResults; ++i)
-      setterFn += "int k"+i+", "+valueType+" v"+i+(i<maxResults-1?", ":"");
-    setterFn += "){\n";
-    for (var i=0; i<maxResults; ++i)
-      setterFn += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1), results["+(i*2+1)+"] = "+(valueType==="float"?"packFloat":"packVec4")+"(v"+i+");\n";
-    setterFn += "}";
+    var setterFns = "";
+    for (var i=0; i<maxResults; ++i){
+      setterFns += "void set"+i+"(int k"+i+", float v"+i+"){\n";
+      setterFns += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1);\n"
+      setterFns += "  results["+(i*2+1)+"] = packFloat(v"+i+");\n"
+      setterFns += "}\n";
+      setterFns += "void set"+i+"(int k"+i+", vec4 v"+i+"){\n";
+      setterFns += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1);\n"
+      setterFns += "  results["+(i*2+1)+"] = packVec4(v"+i+");\n"
+      setterFns += "}\n";
+    };
 
     var writeToTexture = "";
     for (var i=0; i<maxResults*2; ++i)
       writeToTexture += "  if (idx == "+i+") gl_FragColor = results["+i+"];\n";
 
-    var setter = "  set(";
-    for (var i=0; i < maxResults; ++i)
-      setter += (i < usedResults 
+    var setter = "";
+    for (var i=0; i < maxResults; ++i){
+      setter += "  set"+i+"(";
+      setter += i < usedResults
         ? setters[i].index+", "+setters[i].value
-        : "-1, "+(valueType==="float"?"0.0":"vec4(0.0)"))
-        + (i < maxResults-1 ? ",\n      " : "");
-    setter += ");";
+        : "-1, vec4(0.0)";
+      setter += ");\n";
+    };
 
     var vertexShader = [
       "precision highp float;",
@@ -392,7 +426,7 @@ module.exports = function WebMonkeys(opt){
       defaultLib,
       userLib,
       getters,
-      setterFn,
+      setterFns,
       "vec4 scaleToScreen(vec2 pos){",
       "  vec2 screenCoord = scaleRange(vec2(0.0,0.0), vec2(resultGridSide), vec2(-1.0), vec2(-1.0+resultSquareSide*resultGridSide/resultTextureSide*2.0), pos);",
       "  return vec4(screenCoord + vec2(resultSquareSide)/resultTextureSide, 1.0, 1.0);",
@@ -400,7 +434,7 @@ module.exports = function WebMonkeys(opt){
       "void main(){",
       "  int i = int(resultIndex);",
       "  float f = resultIndex;",
-      taskWithoutSetter,
+      taskWithoutSetters,
       setter,
       "  gl_PointSize = resultSquareSide;",
       "  gl_Position = scaleToScreen(indexToPos(vec2(resultGridSide), resultIndex));",
@@ -418,7 +452,7 @@ module.exports = function WebMonkeys(opt){
       "  int idx = int((resultSquareSide-1.0-coord.y) * resultSquareSide + coord.x);",
       writeToTexture,
       "}"].join("\n");
-
+      
       var shader = buildShader(vertexShader, fragmentShader);
 
       return shaderByTask[task] = {
@@ -443,6 +477,8 @@ module.exports = function WebMonkeys(opt){
     var usedResultTextureSide = resultGridSide * resultSquareSide;
 
     gl.useProgram(shader);
+    gl.bindBuffer(gl.ARRAY_BUFFER, rangeBuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     gl.uniform1f(gl.getUniformLocation(shader,"resultGridSide"), resultGridSide);
     gl.uniform1f(gl.getUniformLocation(shader,"resultSquareSide"), resultSquareSide);
     gl.uniform1f(gl.getUniformLocation(shader,"resultTextureSide"), resultTextureSide);
@@ -472,6 +508,30 @@ module.exports = function WebMonkeys(opt){
     gl.drawArrays(gl.POINTS, 0, monkeyCount*resultSquareSide*resultSquareSide/2);
   };
 
+  // Allows rendering arrays to a Canvas for visualization
+  // *{Monkeys}, String, Number, Number -> Canvas
+  function render(name, width, height){
+    if (gl.canvas && arrayByName[name]){
+      gl.canvas.width = width;
+      gl.canvas.height = height;
+      gl.useProgram(renderer);
+      gl.viewport(0, 0, width, height);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, arrayByName[name].texture);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, rendererVertexBuffer);
+      var vertexPosAttr = gl.getAttribLocation(renderer, "vertexPos")
+      gl.vertexAttribPointer(vertexPosAttr, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(vertexPosAttr);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return gl.canvas;
+    }
+    return null;
+  };
+
   // *{Monkeys}, String -> Monkeys
   function lib(source){
     userLib = source;
@@ -494,6 +554,7 @@ module.exports = function WebMonkeys(opt){
     del: del,
     lib: lib,
     work: work,
+    render: render,
     stringify: stringify,
     log: log
   };

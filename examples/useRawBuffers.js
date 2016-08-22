@@ -1,10 +1,9 @@
 // When you are absolutely concerned with performance, or need perfect
-// precision on the uploaded/downloaded values, you can set the "useRawBuffers"
-// flag. That will change the behavior of the language, so that, instead of
-// dealing with arrays of JS numbers, you must use typed arrays (Uint32Array).
-// Each 32-bit uint is interpreted as a vec4 on the shader, with each component
-// ranging from 0 to 255. This avoids overhead from both Float packing and buffer
-// allocation on the get/set ops.
+// precision on the uploaded/downloaded values, you can pass an Uint32Array
+// to the get and set functions. That way, each value is accessed as a vec4
+// on the shader, with each component ranging from 0 to 255. This avoids
+// overhead from both Float packing and buffer allocation on the get/set ops.
+// Be warned the get function will **modify the original buffer**!
 
 var monkeys = require("./../src/WebMonkeys.js")({useRawBuffers: true});
 
@@ -18,7 +17,8 @@ monkeys.work(1, `
   a(0) := vec4(a0.x + a0.y + a0.z + a0.w, vec3(0.0));
   a(1) := a(1) * 2.0;
 `);
-monkeys.get("a", buffer); 
+monkeys.get("a"); // original buffer is modified!
+
 console.log(buffer);
 
 // Output: Uint32Array { '0': 10, '1': 2, '2': 7, '3': 7 }
