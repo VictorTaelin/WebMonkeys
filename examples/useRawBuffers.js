@@ -5,7 +5,7 @@
 // overhead from both Float packing and buffer allocation on the get/set ops.
 // Be warned the get function will **modify the original buffer**!
 
-var monkeys = require("./../src/WebMonkeys.js")({useRawBuffers: true});
+var monkeys = require("./../src/WebMonkeys.js")();
 
 // The example below uploads 4 Uint32 values, sums each component on the first,
 // doubles the second and doesn't affect the others.
@@ -21,8 +21,4 @@ monkeys.get("a"); // original buffer is modified!
 
 console.log(buffer);
 
-// Output: Uint32Array { '0': 10, '1': 2, '2': 7, '3': 7 }
-
-// Notice that `get` can optionally receive a buffer object, so it downloads
-// the data directly into it, avoiding the need for allocating another array.
-// If you don't send a buffer to it, it will need to alloc.
+// Output: Uint32Array [10, 2, 7, 7]
