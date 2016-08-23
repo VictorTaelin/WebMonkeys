@@ -146,7 +146,6 @@ module.exports = function WebMonkeys(opt){
       //"  gl_FragColor = vec4(1.0, 0.5, 0.5, 1.0);",
       "}"].join("\n"));
 
-    gl.enable(gl.DEPTH_TEST);
     gl.clearDepth(256.0);
 
     rendererVertexBuffer = gl.createBuffer();
@@ -533,6 +532,7 @@ module.exports = function WebMonkeys(opt){
     }
     gl.drawArrays(gl.POINTS, 0, monkeyCount);
 
+    if (usesDepth) gl.enable(gl.DEPTH_TEST);
     gl.useProgram(writer);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, resultTexture);
@@ -550,6 +550,7 @@ module.exports = function WebMonkeys(opt){
       gl.clear(gl.DEPTH_BUFFER_BIT)
     };
     gl.drawArrays(gl.POINTS, 0, monkeyCount*resultSquareSide*resultSquareSide/2);
+    if (usesDepth) gl.disable(gl.DEPTH_TEST);
   };
 
   // Allows rendering arrays to a Canvas for visualization
