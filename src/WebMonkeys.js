@@ -82,16 +82,20 @@ module.exports = function WebMonkeys(opt){
       "vec4 unpackVec4(vec4 v){",
       "  return v*255.0;",
       "}",
-      "vec4 packUint32(int i){",
-      "  float v = float(i);",
-      "  float r = mod(floor(v), 256.0);",
-      "  float g = mod(floor(v/256.0), 256.0);",
-      "  float b = mod(floor(v/256.0/256.0), 256.0);",
-      "  float a = mod(floor(v/256.0/256.0/256.0), 256.0);",
-      "  return vec4(r,g,b,a)/255.0;",
+      "vec4 packIndexDepth(int a, int b){",
+      "  float av = float(a);",
+      "  float bv = float(b);",
+      "  float x = mod(floor(av), 256.0);",
+      "  float y = mod(floor(av/256.0), 256.0);",
+      "  float z = mod(floor(av/256.0/256.0), 256.0);",
+      "  float w = mod(floor(bv), 256.0);",
+      "  return vec4(x,y,z,w)/255.0;",
       "}",
-      "int unpackUint32(vec4 v){",
-      "  return int(v.r*255.0 + v.g*255.0*256.0 + v.b*255.0*256.0*256.0 + v.a*255.0*256.0*256.0*256.0);",
+      "int unpackIndex(vec4 v){",
+      "  return int(v.x*255.0 + v.y*255.0*256.0 + v.z*255.0*256.0*256.0);",
+      "}",
+      "int unpackDepth(vec4 v){",
+      "  return int(v.w*255.0);",
       "}",
       ].join("\n");
 
@@ -112,10 +116,12 @@ module.exports = function WebMonkeys(opt){
       "  vec2 resultCoord = resultGridCoord * resultSquareSide + resultSquareCoord;",
       "  vec2 indexCoord = (resultCoord+vec2(0.5,0.5))/resultTextureSide;",
       "  vec2 valueCoord = (resultCoord+vec2(1.5,0.5))/resultTextureSide;",
-      "  float index = float(unpackUint32(texture2D(resultTexture, indexCoord))-1);",
+      "  float index = float(unpackIndex(texture2D(resultTexture, indexCoord))-1);",
+      "  float depth = float(unpackDepth(texture2D(resultTexture, indexCoord)));",
       "  value = texture2D(resultTexture, valueCoord);",
       "  vec2 rPos = (indexToPos(vec2(targetTextureSide),index)+vec2(0.5))/targetTextureSide*2.0-1.0;",
-      "  gl_Position = vec4(index >= -0.1 ? rPos : vec2(-1.0,-1.0), 0.0, 1.0);",
+      "  gl_Position = vec4(depth < 254.5 ? rPos : vec2(-1.0,-1.0), (255.0-depth)/255.0, 1.0);",
+      //"  gl_Position = vec4(rPos, -0.5, 1.0);",
       "  gl_PointSize = 1.0;",
       "}"].join("\n"),
       ["precision highp float;",
@@ -139,6 +145,9 @@ module.exports = function WebMonkeys(opt){
       "  gl_FragColor = texture2D(array, pos*0.5+0.5);",
       //"  gl_FragColor = vec4(1.0, 0.5, 0.5, 1.0);",
       "}"].join("\n"));
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.clearDepth(256.0);
 
     rendererVertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, rendererVertexBuffer);
@@ -209,6 +218,7 @@ module.exports = function WebMonkeys(opt){
       ? new Uint8Array(targetArray.buffer)  // re-uses existing buffer
       : new Uint8Array(array.textureSide*array.textureSide*4);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, array.texture, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
     gl.readPixels(0, 0, array.textureSide, array.textureSide, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
     if (!targetArray){
@@ -268,11 +278,15 @@ module.exports = function WebMonkeys(opt){
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureSide, textureSide, 0, gl.RGBA, gl.UNSIGNED_BYTE, array);
+      var depthbuffer = gl.createRenderbuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, depthbuffer);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, textureSide, textureSide);
       arrayByName[name] = {
         name: name,
         uint32Array: lengthOrArray instanceof Uint32Array ? lengthOrArray : null,
         valueType: lengthOrArray instanceof Uint32Array ? "vec4" : "float",
         texture: texture,
+        depthbuffer: depthbuffer,
         textureName: name+"_",
         textureSide: textureSide,
         length: length};
@@ -301,11 +315,12 @@ module.exports = function WebMonkeys(opt){
   // Parses a setter statement such as:
   //   foo(i*8) := bar(i*8) + baz(i*8);
   // And returns `name`, `index` and `value` strings:
-  //   {name: "foo", index: "i*8", value: "bar[i*8] + baz[i*8]"}
+  //   {name: "foo", index: "i*8", depth: "", value: "bar[i*8] + baz[i*8]"}
   // String -> Maybe {name: String, index: String, value: String}
   function parseSetterStatement(statement){
     var name = "";
     var index = "";
+    var depth = "";
     var value = "";
     var phase = 0;
     var brackets = 1;
@@ -323,42 +338,60 @@ module.exports = function WebMonkeys(opt){
             ++brackets;
           else if (chr === ")")
             --brackets;
-          if (brackets === 0)
+          if (brackets === 1 && chr === ",")
             phase = 2;
+          else if (brackets === 0)
+            phase = 3;
           else
             index += chr;
         break;
         case 2:
-          if (chr === ":")
+          if (chr === "(")
+            ++brackets;
+          else if (chr === ")")
+            --brackets;
+          if (brackets === 0)
             phase = 3;
+          else
+            depth += chr;
         break;
         case 3:
-          if (chr === "=")
+          if (chr === ":")
             phase = 4;
+        break;
+        case 4:
+          if (chr === "=")
+            phase = 5;
           else
             return null;
         break;
-        case 4:
+        case 5:
           if (chr !== " ")
             value += chr,
-            phase = 5;
-          break;
-        case 5:
-          if (chr === ";")
             phase = 6;
+          break;
+        case 6:
+          if (chr === ";")
+            phase = 7;
           else
             value += chr;
         break;
       };
     };
-    return phase === 6 ? {name: name.replace(/\n/g,""), index: index, value: value} : null;
+    return phase === 7 
+      ? {name: name,
+        index: index,
+        depth: depth,
+        value: value}
+      : null;
   };
 
-  // Int, String -> {shader: GLShader, maxResults: Uint, resultArrayName: String}
+  // Int, String -> {shader: GLShader, maxResults: Uint, resultArrayName: String, usesDepth: bool}
   function buildShaderForTask(task){
     if (shaderByTask[task]) 
       return shaderByTask[task];
 
+    var usesDepth = false;
     var taskStatements = task.split(";");
     taskStatements.pop();
     var setters = [];
@@ -366,6 +399,8 @@ module.exports = function WebMonkeys(opt){
     while (setter = parseSetterStatement(taskStatements[taskStatements.length-1]+";")){
       setters.push(setter);
       taskStatements.pop();
+      if (setter.depth !== "0")
+        usesDepth = true;
     };
     if (setters.length === 0)
       throw "Error parsing Monkey task: tasks must end with a setter statement such as `foo[0] = 0;`.";
@@ -392,12 +427,12 @@ module.exports = function WebMonkeys(opt){
 
     var setterFns = "";
     for (var i=0; i<maxResults; ++i){
-      setterFns += "void set"+i+"(int k"+i+", float v"+i+"){\n";
-      setterFns += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1);\n"
+      setterFns += "void set"+i+"(int i"+i+", int d"+i+", float v"+i+"){\n";
+      setterFns += "  results["+(i*2+0)+"] = packIndexDepth(i"+i+"+1, d"+i+");\n"
       setterFns += "  results["+(i*2+1)+"] = packFloat(v"+i+");\n"
       setterFns += "}\n";
-      setterFns += "void set"+i+"(int k"+i+", vec4 v"+i+"){\n";
-      setterFns += "  results["+(i*2+0)+"] = packUint32(k"+i+"+1);\n"
+      setterFns += "void set"+i+"(int i"+i+", int d"+i+", vec4 v"+i+"){\n";
+      setterFns += "  results["+(i*2+0)+"] = packIndexDepth(i"+i+"+1, d"+i+");\n"
       setterFns += "  results["+(i*2+1)+"] = packVec4(v"+i+");\n"
       setterFns += "}\n";
     };
@@ -410,8 +445,10 @@ module.exports = function WebMonkeys(opt){
     for (var i=0; i < maxResults; ++i){
       setter += "  set"+i+"(";
       setter += i < usedResults
-        ? setters[i].index+", "+setters[i].value
-        : "-1, vec4(0.0)";
+        ? setters[i].index+", "
+          + (setters[i].depth||"1")+", "
+          + setters[i].value
+        : "0, 255, vec4(0.0)";
       setter += ");\n";
     };
 
@@ -456,6 +493,7 @@ module.exports = function WebMonkeys(opt){
       var shader = buildShader(vertexShader, fragmentShader);
 
       return shaderByTask[task] = {
+        usesDepth: usesDepth,
         fragmentShader: fragmentShader,
         vertexShader: vertexShader,
         shader: shader,
@@ -469,6 +507,7 @@ module.exports = function WebMonkeys(opt){
     var shader = shaderObject.shader;
     var maxResults = shaderObject.maxResults;
     var resultArrayName = shaderObject.resultArrayName;
+    var usesDepth = shaderObject.usesDepth;
 
     var output = arrayByName[resultArrayName];
 
@@ -485,6 +524,7 @@ module.exports = function WebMonkeys(opt){
     gl.vertexAttribPointer(gl.getAttribLocation(shader,"resultIndex"), 1, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(gl.getAttribLocation(shader,"resultIndex"));
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, resultTexture, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
     gl.viewport(0, 0, resultTextureSide, resultTextureSide);
     for (var i=0, l=arrays.length; i<l; ++i){
       gl.activeTexture(gl.TEXTURE0+i);
@@ -505,6 +545,10 @@ module.exports = function WebMonkeys(opt){
     gl.enableVertexAttribArray(gl.getAttribLocation(writer,"resultIndex"));
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, output.texture, 0);
     gl.viewport(0, 0, output.textureSide, output.textureSide);
+    if (usesDepth){
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, output.depthbuffer);
+      gl.clear(gl.DEPTH_BUFFER_BIT)
+    };
     gl.drawArrays(gl.POINTS, 0, monkeyCount*resultSquareSide*resultSquareSide/2);
   };
 
