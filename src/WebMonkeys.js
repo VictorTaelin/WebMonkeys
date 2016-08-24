@@ -120,7 +120,7 @@ module.exports = function WebMonkeys(opt){
       "  float depth = float(unpackDepth(texture2D(resultTexture, indexCoord)));",
       "  value = texture2D(resultTexture, valueCoord);",
       "  vec2 rPos = (indexToPos(vec2(targetTextureSide),index)+vec2(0.5))/targetTextureSide*2.0-1.0;",
-      "  gl_Position = vec4(depth < 254.5 ? rPos : vec2(-1.0,-1.0), (255.0-depth)/255.0, 1.0);",
+      "  gl_Position = vec4(depth > 0.5 ? rPos : vec2(-1.0,-1.0), (255.0-depth)/255.0, 1.0);",
       //"  gl_Position = vec4(rPos, -0.5, 1.0);",
       "  gl_PointSize = 1.0;",
       "}"].join("\n"),
@@ -447,7 +447,7 @@ module.exports = function WebMonkeys(opt){
         ? setters[i].index+", "
           + (setters[i].depth||"1")+", "
           + setters[i].value
-        : "0, 255, vec4(0.0)";
+        : "0, 0, vec4(0.0)";
       setter += ");\n";
     };
 
