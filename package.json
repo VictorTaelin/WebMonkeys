@@ -1,6 +1,6 @@
 {
   "name": "webmonkeys",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Stupid simple lib for massively parallel programming with JavaScript.",
   "main": "src/WebMonkeys.js",
   "scripts": {
