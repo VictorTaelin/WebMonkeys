@@ -15,7 +15,7 @@ module.exports = function WebMonkeys(opt){
     rangeBuffer,
     rendererVertexBuffer;
 
-  // *{GL} -> {GL}
+  // *{Monkeys}
   function init(){
     opt = opt || [];
     maxMonkeys = opt.maxMonkeys || 2048*2048;
@@ -172,7 +172,7 @@ module.exports = function WebMonkeys(opt){
     return monkeysApi;
   };
 
-  // *{GL}, String, String -> ()
+  // *{Monkeys}, String, String -> WebGLProgram
   function buildShader(vertexSrc, fragmentSrc){
     function compile(type, shaderSource){
       var shader = gl.createShader(type);
