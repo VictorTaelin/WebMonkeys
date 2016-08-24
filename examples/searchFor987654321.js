@@ -18,6 +18,7 @@ console.log("Found on the CPU? "+found+" (time: "+(Date.now()-t)/1000+"s)");
 
 // Parallel search
 console.log("Searching for 987654321 on the GPU.");
+var t = Date.now();
 var totalMonkeys = 20000;
 var attemptsPerMonkey = 60000;
 var monkeyStartingNumber = [];
@@ -33,7 +34,6 @@ monkeys.work(totalMonkeys, `
       gotIt = true;
   found(gotIt ? 0 : 1) := 1.0;
 `);
-var t = Date.now();
 console.log("Found on the GPU? "+(!!monkeys.get("found")[0])+" (time: "+(Date.now()-t)/1000+"s)");
 
 
