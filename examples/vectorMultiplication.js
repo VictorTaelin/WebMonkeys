@@ -12,8 +12,17 @@ monkeys.work(16, "c(i) := a(i) * b(i);");
 // Receives the result back
 console.log(monkeys.get("c"));
 
+
+
+
 // You can use fewer monkeys with more writes per monkey
-monkeys.work(16, `
+
+// Reset C
+monkeys.work(16, `c(i) := 0.0;`);
+console.log(monkeys.get("c"));
+
+// Do the same work with less monkeys
+monkeys.work(8, `
   c(i*2+0) := a(i*2+0) * b(i*2+0);
   c(i*2+1) := a(i*2+1) * b(i*2+1);
 `);
