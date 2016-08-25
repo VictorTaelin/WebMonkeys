@@ -15,7 +15,7 @@ module.exports = function WebMonkeys(opt){
     rangeBuffer,
     rendererVertexBuffer;
 
-  // *{Monkeys}
+  // () -> *{Monkeys}
   function init(){
     opt = opt || [];
     maxMonkeys = opt.maxMonkeys || 2048*2048;

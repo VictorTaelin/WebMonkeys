@@ -1,6 +1,6 @@
 {
   "name": "webmonkeys",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Stupid simple lib for massively parallel programming with JavaScript.",
   "main": "src/WebMonkeys.js",
   "scripts": {
@@ -21,7 +21,7 @@
     "url": "https://github.com/maiavictor/webmonkeys/issues"
   },
   "homepage": "https://github.com/maiavictor/webmonkeys#readme",
-  "dependencies": {
+  "optionalDependencies": {
     "gl": "^4.0.2"
   }
 }
