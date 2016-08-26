@@ -2,18 +2,18 @@
   'use strict';
 
   // amd
-  if (typeof define === 'function' && define.amd) {
+  if (typeof define === 'function' && define.amd)
     // register as an anonymous module
     define([], factory);
-  }
+
   // commonjs
-  else if (typeof exports === 'object' && typeof exports.nodeName !== 'string') {
+  else if (typeof exports === 'object' && typeof exports.nodeName !== 'string')
     factory(exports);
-  } 
+
   // browser globals
-  else {
+  else
     factory(root);
-  }
+
 }(this, function (exports) {
   function WebMonkeys(opt){
     var maxMonkeys,

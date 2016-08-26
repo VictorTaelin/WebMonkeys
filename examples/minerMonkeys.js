@@ -1,9 +1,7 @@
-if (typeof window === 'object') {
+if (typeof window === 'object') 
   var monkeys = WebMonkeys();
-}
-else {
+else
   var monkeys = require("./../src/WebMonkeys")();
-}
 
 // Crypto-currency mining is one of the best use-cases for
 // WebMonkeys, since it involves many parallel tasks with

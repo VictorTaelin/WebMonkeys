@@ -2,12 +2,10 @@
 // an array as a canvas on the screen. You must browserify it and include it in
 // a html file.
 
-if (typeof window === 'object') {
+if (typeof window === 'object')
   var monkeys = WebMonkeys();
-}
-else {
+else
   var monkeys = require("./../src/WebMonkeys")();
-}
 
 var width = height = 256;
 monkeys.set("screen", new Uint32Array(width * height));
