@@ -4,7 +4,7 @@ Allows you to spawn thousands of parallel tasks on the GPU with the simplest, du
 
 ### Usage
 
-On the browser, add `<script src="WebMonkeys.js"><script>` to your HTML. On node.js, install it from npm:
+On the browser, add `<script src="WebMonkeys.js"><script>` to your HTML. On Node.js, install it from npm:
 
     npm install webmonkeys
 
