@@ -1,9 +1,9 @@
 // Creates a WebMonkeys object; you can think it as an office of worker monkeys
 if (typeof window === 'object') {
-  var monkeys = WebMonkeys;
+  var monkeys = WebMonkeys();
 }
 else {
-  var monkeys = require("./../src/WebMonkeys");
+  var monkeys = require("./../src/WebMonkeys")();
 }
 
 // Sends some WebMonkey arrays to the monkey office (GPU)

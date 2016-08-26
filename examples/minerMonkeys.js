@@ -1,8 +1,8 @@
 if (typeof window === 'object') {
-  var monkeys = WebMonkeys;
+  var monkeys = WebMonkeys();
 }
 else {
-  var monkeys = require("./../src/WebMonkeys");
+  var monkeys = require("./../src/WebMonkeys")();
 }
 
 // Crypto-currency mining is one of the best use-cases for

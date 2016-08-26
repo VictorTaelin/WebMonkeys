@@ -3,10 +3,10 @@
 // a html file.
 
 if (typeof window === 'object') {
-  var monkeys = WebMonkeys;
+  var monkeys = WebMonkeys();
 }
 else {
-  var monkeys = require("./../src/WebMonkeys");
+  var monkeys = require("./../src/WebMonkeys")();
 }
 
 var width = height = 256;

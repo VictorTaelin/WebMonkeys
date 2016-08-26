@@ -641,10 +641,10 @@
 
   if (typeof window === 'object') {
     // export monkeysApi
-    exports.WebMonkeys = WebMonkeys();
+    exports.WebMonkeys = WebMonkeys;
   }
   else {
     // export monkeysApi
-    module.exports = WebMonkeys();
+    module.exports = WebMonkeys;
   }
 }));

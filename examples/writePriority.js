@@ -3,10 +3,10 @@
 // race, in a non-deterministic way. You can, though, affect
 // that race by setting a "write priority". For example:
 if (typeof window === 'object') {
-  var monkeys = WebMonkeys;
+  var monkeys = WebMonkeys();
 }
 else {
-  var monkeys = require("./../src/WebMonkeys");
+  var monkeys = require("./../src/WebMonkeys")();
 }
 
 // First, se upload an array with a single number.
