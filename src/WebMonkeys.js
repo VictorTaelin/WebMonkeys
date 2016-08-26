@@ -299,6 +299,21 @@ module.exports = function WebMonkeys(opt){
     return monkeysApi;
   };
 
+  // *Monkeys => String, Uint32 -> Monkeys
+  function clear(name, value){
+    var array = arrayByName[name];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, array.texture, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
+    gl.clearColor(
+      ((value&0x000000FF) >>>  0)/255,
+      ((value&0x0000FF00) >>>  8)/255,
+      ((value&0x00FF0000) >>> 16)/255,
+      ((value&0xFF000000) >>> 24)/255);
+    gl.clear(gl.COLOR_BUFFER_BIT)
+    return monkeysApi;
+  };
+
   // *Monkeys => String -> Monkeys
   function del(name){
     var existingArray;
@@ -598,6 +613,7 @@ module.exports = function WebMonkeys(opt){
     del: del,
     lib: lib,
     work: work,
+    clear: clear,
     render: render,
     stringify: stringify,
     log: log
