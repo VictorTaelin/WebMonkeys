@@ -44,7 +44,7 @@
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
       if (typeof window === "undefined"){
-        gl = require("gl")(1, 1, glOpt);
+        gl = require("g"+"l")(1, 1, glOpt);
       } else {
         var canvas = document.createElement("canvas");
         gl = canvas.getContext("webgl", glOpt);

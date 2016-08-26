@@ -4,7 +4,7 @@ Allows you to spawn thousands of parallel tasks on the GPU with the simplest, du
 
 ### Usage
 
-Install
+On the browser, add `<script src="WebMonkeys.js"><script>` to your HTML. On node.js, install it from npm:
 
     npm install webmonkeys
 
@@ -12,7 +12,7 @@ The example below uses the GPU to square all numbers in an array in parallel:
 
 ```javascript
 // Creates a WebMonkeys object
-var monkeys = require("WebMonkeys")();
+var monkeys = require("WebMonkeys")(); // on the browser, call WebMonkeys() instead
 
 // Sends an array of numbers to the GPU
 monkeys.set("nums", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
