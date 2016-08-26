@@ -1,4 +1,9 @@
-var monkeys = require("./../src/WebMonkeys.js")();
+if (typeof window === 'object') {
+  var monkeys = WebMonkeys();
+}
+else {
+  var monkeys = require("./../src/WebMonkeys")();
+}
 
 // You can set a lib of GLSL functions using the .lib call
 monkeys.lib(`

@@ -2,7 +2,12 @@
 // write to the same index. Usually, only one will win the write
 // race, in a non-deterministic way. You can, though, affect
 // that race by setting a "write priority". For example:
-var monkeys = require("./../src/WebMonkeys")();
+if (typeof window === 'object') {
+  var monkeys = WebMonkeys();
+}
+else {
+  var monkeys = require("./../src/WebMonkeys")();
+}
 
 // First, se upload an array with a single number.
 monkeys.set("nums", [0]);

@@ -1,4 +1,9 @@
-var monkeys = require("./../src/WebMonkeys")();
+if (typeof window === 'object') {
+  var monkeys = WebMonkeys();
+}
+else {
+  var monkeys = require("./../src/WebMonkeys")();
+}
 
 // Since (due to floating-point modulus issues) I couldn't test the power of
 // WebMonkeys with the mining example, here is a program that merely tests
