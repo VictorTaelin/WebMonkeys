@@ -1,20 +1,4 @@
-(function (root, factory) {
-  'use strict';
-
-  // amd
-  if (typeof define === 'function' && define.amd)
-    // register as an anonymous module
-    define([], factory);
-
-  // commonjs
-  else if (typeof exports === 'object' && typeof exports.nodeName !== 'string')
-    factory(exports);
-
-  // browser globals
-  else
-    factory(root);
-
-}(this, function (exports) {
+load(this, function (exports) {
   function WebMonkeys(opt){
     var maxMonkeys,
       resultTextureSide,
@@ -639,12 +623,27 @@
     return init();
   }
 
-  if (typeof window === 'object') {
-    // export monkeysApi
+  if (typeof window === 'object')
     exports.WebMonkeys = WebMonkeys;
-  }
-  else {
-    // export monkeysApi
+
+  if (typeof module !== "undefined")
     module.exports = WebMonkeys;
-  }
-}));
+});
+
+function load(root, factory) {
+  'use strict';
+
+  // amd
+  if (typeof define === 'function' && define.amd)
+    // register as an anonymous module
+    define([], factory);
+
+  // commonjs
+  else if (typeof exports === 'object' && typeof exports.nodeName !== 'string')
+    factory(exports);
+
+  // browser globals
+  else
+    factory(root);
+
+}
