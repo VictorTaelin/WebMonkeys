@@ -1,6 +1,6 @@
 // This example shows how monkeys.render can be used to display the contents of
-// an array as a canvas on the screen. You must browserify it and include it in
-// a html file.
+// an array as a canvas on the screen. Live at:
+// https://rawgit.com/MaiaVictor/WebMonkeys/master/examples/index.html?example=renderSineWaves.js
 
 if (typeof window === 'object')
   var monkeys = WebMonkeys();
