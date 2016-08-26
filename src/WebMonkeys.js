@@ -198,7 +198,7 @@
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){
           var errorMsg = "WebMonkeys had the following error from WebGL: " + gl.getShaderInfoLog(shader);
           if (errorMsg.indexOf("syntax error") !== -1)
-            errorMsg += "This could mean that you forgot to add a `;` before the list of setters.";
+            errorMsg += "This could be fixed by adding extra `;` before setters.";
           throw errorMsg;
         }
         return shader;
