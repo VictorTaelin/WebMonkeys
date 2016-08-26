@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>WebMonkeys Examples</title>
+</head>
+<body>
+	<script src=../src/WebMonkeys.js></script>
+	<script>
+		// loads an example
+		// i.e 
+		// https://rawgit.com/MaiaVictor/WebMonkeys/master/examples/index.html?example=squareNumbers.js
+		var example = window.location.search.split('?example=')[1];
+		var script = document.createElement('script');
+		document.head.appendChild(script);
+		script.src = './'+example;
+	</script>
+</body>
+</html>

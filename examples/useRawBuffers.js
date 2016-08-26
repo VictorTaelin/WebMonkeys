@@ -5,7 +5,12 @@
 // overhead from both Float packing and buffer allocation on the get/set ops.
 // Be warned the get function will **modify the original buffer**!
 
-var monkeys = require("./../src/WebMonkeys.js")();
+if (typeof window === 'object') {
+  var monkeys = WebMonkeys;
+}
+else {
+  var monkeys = require("./../src/WebMonkeys");
+}
 
 // The example below uploads 4 Uint32 values, sums each component on the first,
 // doubles the second and doesn't affect the others.
