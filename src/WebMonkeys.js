@@ -12,10 +12,10 @@ module.exports = function WebMonkeys(opt){
     resultTexture,
     userLib,
     framebuffer,
-    rangeBuffer,
+    rangebuffer,
     rendererVertexBuffer;
 
-  // () -> *{Monkeys}
+  // () -> Monkeys
   function init(){
     opt = opt || [];
     maxMonkeys = opt.maxMonkeys || 2048*2048;
@@ -152,8 +152,8 @@ module.exports = function WebMonkeys(opt){
     gl.bindBuffer(gl.ARRAY_BUFFER, rendererVertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1,1,-1,-1,1,-1,1,1,-1,1,-1,-1]), gl.STATIC_DRAW);
 
-    rangeBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, rangeBuffer);
+    rangebuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, rangebuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(monkeyIndexArray), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -172,7 +172,7 @@ module.exports = function WebMonkeys(opt){
     return monkeysApi;
   };
 
-  // *{Monkeys}, String, String -> WebGLProgram
+  // *Monkeys => String, String -> WebGLProgram
   function buildShader(vertexSrc, fragmentSrc){
     function compile(type, shaderSource){
       var shader = gl.createShader(type);
@@ -209,9 +209,10 @@ module.exports = function WebMonkeys(opt){
     return x - Math.floor(x);
   };
 
-  // *{Monkeys}, String -> Either (Array Number) Uint32Array
+  // *Monkeys => String -> Maybe (Either (Array Number) *Uint32Array)
   function get(name){
     var array = arrayByName[name];
+    if (!array) return null;
     var targetArray = array.uint32Array;
     var pixels = targetArray
       ? new Uint8Array(targetArray.buffer)  // re-uses existing buffer
@@ -236,9 +237,9 @@ module.exports = function WebMonkeys(opt){
     }
   };
 
-  // *{Monkeys}, String, Uint32Array -> Monkeys
-  // *{Monkeys}, String, Array Number -> Monkeys
-  // *{Monkeys}, String, Number -> Monkeys
+  // *Monkeys => String, *Uint32Array -> Monkeys
+  // *Monkeys => String, Array Number -> Monkeys
+  // *Monkeys => String, Number -> Monkeys
   function set(name, lengthOrArray){
     if (typeof lengthOrArray === "number"){
       var length = lengthOrArray;
@@ -298,7 +299,7 @@ module.exports = function WebMonkeys(opt){
     return monkeysApi;
   };
 
-  // *{Monkeys}, String -> Monkeys
+  // *Monkeys => String -> Monkeys
   function del(name){
     var existingArray;
     if (existingArray = arraysByName[name]){
@@ -311,11 +312,10 @@ module.exports = function WebMonkeys(opt){
     return monkeysApi;
   };
 
-  // Parses a setter statement such as:
-  //   foo(i*8) := bar(i*8) + baz(i*8);
-  // And returns `name`, `index` and `value` strings:
-  //   {name: "foo", index: "i*8", depth: "", value: "bar[i*8] + baz[i*8]"}
-  // String -> Maybe {name: String, index: String, value: String}
+  // String -> Maybe {name: String, index: String, depth: String, value: String}
+  //   Parses a setter statement such as `foo(i*8) := bar(i*8) + baz(i*8);` and
+  //   returns `name`, `index`, `depth` and `value` strings:
+  //   {name: "foo", index: "i*8", depth: "", value: "bar(i*8) + baz(i*8)"}
   function parseSetterStatement(statement){
     var name = "";
     var index = "";
@@ -385,7 +385,7 @@ module.exports = function WebMonkeys(opt){
       : null;
   };
 
-  // Int, String -> {shader: GLShader, maxResults: Uint, resultArrayName: String, usesDepth: bool}
+  // String -> {shader: GLShader, maxResults: Number, resultArrayName: String, usesDepth: Bool}
   function buildShaderForTask(task){
     if (shaderByTask[task]) 
       return shaderByTask[task];
@@ -493,14 +493,12 @@ module.exports = function WebMonkeys(opt){
 
       return shaderByTask[task] = {
         usesDepth: usesDepth,
-        fragmentShader: fragmentShader,
-        vertexShader: vertexShader,
         shader: shader,
         maxResults: maxResults,
         resultArrayName: resultArrayName};
   };
 
-  // *{Monkeys}, Number, String -> Monkeys
+  // *Monkeys => Number, String -> Monkeys
   function work(monkeyCount, task){
     var shaderObject = buildShaderForTask(task);
     var shader = shaderObject.shader;
@@ -515,7 +513,7 @@ module.exports = function WebMonkeys(opt){
     var usedResultTextureSide = resultGridSide * resultSquareSide;
 
     gl.useProgram(shader);
-    gl.bindBuffer(gl.ARRAY_BUFFER, rangeBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, rangebuffer);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     gl.uniform1f(gl.getUniformLocation(shader,"resultGridSide"), resultGridSide);
     gl.uniform1f(gl.getUniformLocation(shader,"resultSquareSide"), resultSquareSide);
@@ -551,10 +549,11 @@ module.exports = function WebMonkeys(opt){
     };
     gl.drawArrays(gl.POINTS, 0, monkeyCount*resultSquareSide*resultSquareSide/2);
     if (usesDepth) gl.disable(gl.DEPTH_TEST);
+    return monkeysApi;
   };
 
   // Allows rendering arrays to a Canvas for visualization
-  // *{Monkeys}, String, Number, Number -> Canvas
+  // *Monkeys => String, Number, Number -> Maybe Canvas
   function render(name, width, height){
     if (gl.canvas && arrayByName[name]){
       gl.canvas.width = width;
@@ -577,18 +576,18 @@ module.exports = function WebMonkeys(opt){
     return null;
   };
 
-  // *{Monkeys}, String -> Monkeys
+  // *Monkeys => String -> Monkeys
   function lib(source){
     userLib = source;
     return monkeysApi;
   };
 
-  // *{Monkeys}, String -> String
+  // Monkeys => String -> String
   function stringify(name){
     return JSON.stringify(get(name));
   };
 
-  // *{Monkeys}, String -> IO ()
+  // Monkeys => String -> IO ()
   function log(name){
     console.log(stringify(name))
   };
