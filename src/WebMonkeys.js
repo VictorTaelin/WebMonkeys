@@ -1,11 +1,9 @@
 load(this, function (exports) {
   function WebMonkeys(opt){
-    var maxMonkeys,
-      resultTextureSide,
+    var resultTextureSide,
       arrays,
       arrayByName,
       shaderByTask,
-      monkeyIndexArray,
       gl,
       defaultLib,
       writer,
@@ -19,12 +17,10 @@ load(this, function (exports) {
     // () -> Monkeys
     function init(){
       opt = opt || [];
-      maxMonkeys = opt.maxMonkeys || 2048*2048;
       resultTextureSide = opt.resultTextureSide || 2048;
       arrays = [];
       arrayByName = {};
       shaderByTask = {};
-      monkeyIndexArray = new Int32Array(maxMonkeys);
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
       if (typeof window === "undefined"){
@@ -44,8 +40,12 @@ load(this, function (exports) {
           "-ms-interpolation-mode: nearest-neighbor;"].join("");
       }
 
-      for (var i=0; i<maxMonkeys; ++i)
-        monkeyIndexArray[i] = i; 
+      var buffer = new ArrayBuffer((2048*2048)|0);
+      var maxMonkeys = buffer.byteLength|0;
+      var monkeyIndexArray = new Int32Array(buffer);
+
+      for (var i=0|0; i<maxMonkeys; ++i)
+        monkeyIndexArray[i|0] = i|0; 
 
       defaultLib = [
         "vec2 indexToPos(vec2 size, float index){",
