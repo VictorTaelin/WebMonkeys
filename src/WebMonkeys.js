@@ -24,7 +24,6 @@ load(this, function (exports) {
       arrays = [];
       arrayByName = {};
       shaderByTask = {};
-      // monkeyIndexArray = [];
       monkeyIndexArray = new Int32Array(maxMonkeys);
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
@@ -46,8 +45,6 @@ load(this, function (exports) {
           "-ms-interpolation-mode: nearest-neighbor;"].join("");
       }
 
-      // FIXME: this causes a small slowdown on startup; a better behavior
-      // would be to dynamically alloc a bigger buffer on demand
       for (var i=0; i<maxMonkeys; ++i)
         monkeyIndexArray[i] = i; 
 
