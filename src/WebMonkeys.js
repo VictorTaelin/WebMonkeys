@@ -24,7 +24,8 @@ load(this, function (exports) {
       arrays = [];
       arrayByName = {};
       shaderByTask = {};
-      monkeyIndexArray = [];
+      // monkeyIndexArray = [];
+      monkeyIndexArray = new Int32Array(maxMonkeys);
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
       if (typeof window === "undefined"){
