@@ -36,7 +36,6 @@ load(this, function (exports) {
         gl.canvas.width = 1;
         gl.canvas.height = 1;
         gl.canvas.style = [
-          "border: 1px solid black;",
           "image-rendering: optimizeSpeed;",
           "image-rendering: -moz-crisp-edges;",
           "image-rendering: -webkit-optimize-contrast;",
