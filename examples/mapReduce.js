@@ -57,11 +57,6 @@ console.log(
   "in "+(Date.now()-begin)/1000+" seconds "+
   "(result: "+monkeys.get("result")[0]+").");
 
-var visualize = false; // toggle for visualization (use small totalNumbers!)
-var sumsPerMonkey = visualize ? 2 : 128;
-var totalNumbers = visualize ? 4*8 : 4096*4096;
-var begin = Date.now();
-
 // :::::::::: On the CPU :::::::::: 
 
 var begin = Date.now();
