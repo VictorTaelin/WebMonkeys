@@ -1,30 +1,28 @@
 load(this, function (exports) {
   function WebMonkeys(opt){
-    var maxMonkeys,
+    var maxVertexIndex,
+      vertexIndexBuffer,
       resultTextureSide,
+      resultTexture,
       arrays,
       arrayByName,
       shaderByTask,
-      monkeyIndexArray,
       gl,
       defaultLib,
       writer,
       renderer,
-      resultTexture,
       userLib,
       framebuffer,
-      rangebuffer,
       rendererVertexBuffer;
 
     // () -> Monkeys
     function init(){
       opt = opt || [];
-      maxMonkeys = opt.maxMonkeys || 2048*2048;
+      maxVertexIndex = 0; // adjusted dynamically
       resultTextureSide = opt.resultTextureSide || 2048;
       arrays = [];
       arrayByName = {};
       shaderByTask = {};
-      monkeyIndexArray = new Int32Array(maxMonkeys);
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
       if (typeof window === "undefined"){
@@ -36,6 +34,7 @@ load(this, function (exports) {
         gl.canvas.width = 1;
         gl.canvas.height = 1;
         gl.canvas.style = [
+          "border: 1px solid black;",
           "image-rendering: optimizeSpeed;",
           "image-rendering: -moz-crisp-edges;",
           "image-rendering: -webkit-optimize-contrast;",
@@ -43,9 +42,6 @@ load(this, function (exports) {
           "image-rendering: pixelated;",
           "-ms-interpolation-mode: nearest-neighbor;"].join("");
       }
-
-      for (var i=0; i<maxMonkeys; ++i)
-        monkeyIndexArray[i] = i; 
 
       defaultLib = [
         "vec2 indexToPos(vec2 size, float index){",
@@ -141,19 +137,15 @@ load(this, function (exports) {
         "varying vec2 pos;",
         "void main(){",
         "  gl_FragColor = texture2D(array, pos*0.5+0.5);",
-        //"  gl_FragColor = vec4(1.0, 0.5, 0.5, 1.0);",
         "}"].join("\n"));
 
       gl.clearDepth(256.0);
 
+      vertexIndexBuffer = gl.createBuffer();
+
       rendererVertexBuffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, rendererVertexBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1,1,-1,-1,1,-1,1,1,-1,1,-1,-1]), gl.STATIC_DRAW);
-
-      rangebuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, rangebuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(monkeyIndexArray), gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
       resultTexture = gl.createTexture();
       gl.activeTexture(gl.TEXTURE0);
@@ -168,6 +160,21 @@ load(this, function (exports) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
       return monkeysApi;
+    };
+
+    // *Monkeys => Number -> Monkeys
+    //   Makes sure there are enough index vertices available
+    //   for a `gl.drawArrays(gl.POINTS, 0, vertices)` call.
+    function allocVertexIndices(indices){
+      if (indices > maxVertexIndex){
+        maxVertexIndex = Math.pow(fitTextureSide(indices), 2);
+        var vertexIndexArray = new Float32Array(maxVertexIndex);
+        for (var i=0; i<maxVertexIndex; ++i)
+          vertexIndexArray[i] = i; 
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexIndexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertexIndexArray, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      };
     };
 
     // *Monkeys => String, String -> WebGLProgram
@@ -525,8 +532,10 @@ load(this, function (exports) {
       var resultGridSide = fitTextureSide(monkeyCount);
       var usedResultTextureSide = resultGridSide * resultSquareSide;
 
+      allocVertexIndices(Math.max(monkeyCount, monkeyCount*resultSquareSide*resultSquareSide/2));
+
       gl.useProgram(shader);
-      gl.bindBuffer(gl.ARRAY_BUFFER, rangebuffer);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexIndexBuffer);
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.uniform1f(gl.getUniformLocation(shader,"resultGridSide"), resultGridSide);
       gl.uniform1f(gl.getUniformLocation(shader,"resultSquareSide"), resultSquareSide);
