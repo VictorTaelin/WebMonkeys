@@ -321,7 +321,25 @@ load(this, function (exports) {
       return monkeysApi;
     };
 
+    // *Monkeys => String, Number -> Monkeys
+    //   Fills an array with a floating point number
+    function fill(name, x){
+      var array = arrayByName[name];
+      // Since the float packing on the set function is
+      // inlined for performance, it must be duplicated
+      // here. FIXME: find a way to avoid this.
+      var s = x > 0 ? 1 : -1;
+      var e = Math.floor(Math.log2(s*x));
+      var m = s*x/Math.pow(2, e);
+      var a = Math.floor(fract((m-1)*256*256)*256)||0;
+      var b = Math.floor(fract((m-1)*256)*256)||0;
+      var c = Math.floor(fract((m-1)*1)*256)||0;
+      var d = ((e+63) + (x>0?128:0))||0;
+      return clear(name, ((d<<24)+(c<<16)+(b<<8)+a));
+    };
+
     // *Monkeys => String, Uint32 -> Monkeys
+    //   Fills an array with an Uint32
     function clear(name, value){
       var array = arrayByName[name];
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -654,6 +672,7 @@ load(this, function (exports) {
       lib: lib,
       work: work,
       clear: clear,
+      fill: fill,
       render: render,
       stringify: stringify,
       log: log
