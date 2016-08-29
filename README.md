@@ -78,7 +78,7 @@ The only reliable way to access the GPU on the browser is by using WebGL. Since 
 
 - A single monkey can write to multiple places. If you need to fill an array of 100 numbers, you could use 100 monkeys writing to 1 index each, or 10 monkeys writing to 10 indices each. What is faster will depend on your application.
 
-- While CPU/GPU bandwidth is huge those days, it still takes time to communicate data between them. Whenever possible, reduce your calls to `set/get`, and keep things internal to the GPU. For example, if you need to move data between two arrays, this: `monkeys.work(16, "target(i) := source(i);")` - is much faster than this: `monkeys.set("target", monkeys.get("source"))`.
+- While CPU/GPU bandwidth is huge these days, it still takes time to communicate data between them. Whenever possible, reduce your calls to `set/get`, and keep things internal to the GPU. For example, if you need to move data between two arrays, this: `monkeys.work(16, "target(i) := source(i);")` - is much faster than this: `monkeys.set("target", monkeys.get("source"))`.
 
 - The first call to `monkeys.work(count, someTask)` is slow due to program compilation, but every call after that is fast. That is for two reasons: 1. WebMonkeys caches shaders so that, when you call `task` with a repeated source code, it just recovers the previously compiled program; 2. JS engines keep strings hashed, which means that retrieval can be done in O(1). In other words, it is perfectly reasonable to call `monkeys.work(n, bigSourceCode)` inside your animation loop (as long as `bigSourceCode` doesn't change).
 
