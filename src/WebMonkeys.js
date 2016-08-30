@@ -29,7 +29,7 @@ load(this, function (exports) {
         gl = require("g"+"l")(1, 1, glOpt);
       } else {
         var canvas = document.createElement("canvas");
-        gl = canvas.getContext("webgl", glOpt);
+        gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         gl.canvas = canvas;
         gl.canvas.width = 1;
         gl.canvas.height = 1;
