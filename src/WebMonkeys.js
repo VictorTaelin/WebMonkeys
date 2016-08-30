@@ -275,7 +275,7 @@ load(this, function (exports) {
           for (var i=0, l=lengthOrArray.length; i<l; ++i){ 
             var x = lengthOrArray[i];
             var s = x > 0 ? 1 : -1;
-            var e = Math.floor(Math.log2(s*x));
+            var e = Math.floor(Math.log(s*x) / Math.LN2);
             var m = s*x/Math.pow(2, e);
             array[i*4+0] = Math.floor(fract((m-1)*256*256)*256)||0;
             array[i*4+1] = Math.floor(fract((m-1)*256)*256)||0;
