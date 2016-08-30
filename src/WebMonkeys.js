@@ -1,30 +1,28 @@
 load(this, function (exports) {
   function WebMonkeys(opt){
-    var maxMonkeys,
+    var maxVertexIndex,
+      vertexIndexBuffer,
       resultTextureSide,
+      resultTexture,
       arrays,
       arrayByName,
       shaderByTask,
-      monkeyIndexArray,
       gl,
       defaultLib,
       writer,
       renderer,
-      resultTexture,
       userLib,
       framebuffer,
-      rangebuffer,
       rendererVertexBuffer;
 
     // () -> Monkeys
     function init(){
       opt = opt || [];
-      maxMonkeys = opt.maxMonkeys || 2048*2048;
-      resultTextureSide = opt.resultTextureSide || 2048;
+      maxVertexIndex = 0;
+      resultTextureSide = 0;
       arrays = [];
       arrayByName = {};
       shaderByTask = {};
-      monkeyIndexArray = new Int32Array(maxMonkeys);
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
       if (typeof window === "undefined"){
@@ -36,6 +34,7 @@ load(this, function (exports) {
         gl.canvas.width = 1;
         gl.canvas.height = 1;
         gl.canvas.style = [
+          "border: 1px solid black;",
           "image-rendering: optimizeSpeed;",
           "image-rendering: -moz-crisp-edges;",
           "image-rendering: -webkit-optimize-contrast;",
@@ -43,9 +42,6 @@ load(this, function (exports) {
           "image-rendering: pixelated;",
           "-ms-interpolation-mode: nearest-neighbor;"].join("");
       }
-
-      for (var i=0; i<maxMonkeys; ++i)
-        monkeyIndexArray[i] = i; 
 
       defaultLib = [
         "vec2 indexToPos(vec2 size, float index){",
@@ -58,9 +54,15 @@ load(this, function (exports) {
         "  return toA+(pos-fromA)/(fromB-fromA)*(toB-toA);",
         "}",
         "vec4 packFloat(float x){",
-        "  float s = x > 0.0 ? 1.0 : -1.0;",
-        "  float e = floor(log2(s*x));",
-        "  float m = s*x / pow(2.0, e);",
+        "  float s = 0.0;",
+        "  float e = 0.0;",
+        "  float m = x;",
+        "  if (m<0.0) s=1.0, m=-m;",
+        "  for (int i=0; i<24; ++i){",
+        "    if (m>=2.0) m=m/2.0, e+=1.0;",
+        "    if (m< 1.0) m=m/2.0, e-=1.0;",
+        "    if (m>=1.0 && m<2.0) break;",
+        "  };",
         "  return vec4(",
         "    floor(fract((m-1.0)*256.0*256.0)*256.0),",
         "    floor(fract((m-1.0)*256.0)*256.0),",
@@ -141,19 +143,15 @@ load(this, function (exports) {
         "varying vec2 pos;",
         "void main(){",
         "  gl_FragColor = texture2D(array, pos*0.5+0.5);",
-        //"  gl_FragColor = vec4(1.0, 0.5, 0.5, 1.0);",
         "}"].join("\n"));
 
       gl.clearDepth(256.0);
 
+      vertexIndexBuffer = gl.createBuffer();
+
       rendererVertexBuffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, rendererVertexBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1,1,-1,-1,1,-1,1,1,-1,1,-1,-1]), gl.STATIC_DRAW);
-
-      rangebuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, rangebuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(monkeyIndexArray), gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
       resultTexture = gl.createTexture();
       gl.activeTexture(gl.TEXTURE0);
@@ -162,12 +160,38 @@ load(this, function (exports) {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, resultTextureSide, resultTextureSide, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
       framebuffer = gl.createFramebuffer();
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
       return monkeysApi;
+    };
+
+    // *Monkeys => Number -> Monkeys
+    //   Makes sure there are enough index vertices available
+    //   for a `gl.drawArrays(gl.POINTS, 0, vertices)` call.
+    function allocVertexIndices(indices){
+      if (indices > maxVertexIndex){
+        maxVertexIndex = Math.pow(fitTextureSide(indices), 2);
+        var vertexIndexArray = new Float32Array(maxVertexIndex);
+        for (var i=0; i<maxVertexIndex; ++i)
+          vertexIndexArray[i] = i; 
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexIndexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertexIndexArray, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      };
+    };
+
+    // *Monkeys => Number -> ()
+    //   Makes sure the results texture is big
+    //   enough to fit every result of a task.
+    function allocResultTexture(usedTextureSide){
+      if (usedTextureSide > resultTextureSide){
+        resultTextureSide = usedTextureSide;
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, resultTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, resultTextureSide, resultTextureSide, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      }
     };
 
     // *Monkeys => String, String -> WebGLProgram
@@ -297,7 +321,25 @@ load(this, function (exports) {
       return monkeysApi;
     };
 
+    // *Monkeys => String, Number -> Monkeys
+    //   Fills an array with a floating point number
+    function fill(name, x){
+      var array = arrayByName[name];
+      // Since the float packing on the set function is
+      // inlined for performance, it must be duplicated
+      // here. FIXME: find a way to avoid this.
+      var s = x > 0 ? 1 : -1;
+      var e = Math.floor(Math.log2(s*x));
+      var m = s*x/Math.pow(2, e);
+      var a = Math.floor(fract((m-1)*256*256)*256)||0;
+      var b = Math.floor(fract((m-1)*256)*256)||0;
+      var c = Math.floor(fract((m-1)*1)*256)||0;
+      var d = ((e+63) + (x>0?128:0))||0;
+      return clear(name, ((d<<24)+(c<<16)+(b<<8)+a));
+    };
+
     // *Monkeys => String, Uint32 -> Monkeys
+    //   Fills an array with an Uint32
     function clear(name, value){
       var array = arrayByName[name];
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -398,8 +440,13 @@ load(this, function (exports) {
         : null;
     };
 
-    // String -> {shader: GLShader, maxResults: Number, resultArrayName: String, usesDepth: Bool}
-    function buildShaderForTask(task){
+    // String -> {
+    //   shader: GLShader,
+    //   usedResults: Number,
+    //   allocResults: Number,
+    //   resultArrayName: String,
+    //   usesDepth: Bool}
+    function buildTask(task){
       if (shaderByTask[task]) 
         return shaderByTask[task];
 
@@ -423,8 +470,20 @@ load(this, function (exports) {
 
       var taskWithoutSetters = taskStatements.join(";")+";";
 
+      // `usedResults` is how many sets this work does.
+      // `allocResults` is how many sets we actually allocated space for.
+      // Explanation: a result is an (indice, value) pair which will be used on
+      // the next pass to fill the target array. Those results are recorded
+      // into square sections of a 2D texture. Each monkey has its own square.
+      // In order for everything to fit, the square of a monkey will have empty
+      // space. For example, if a task makes 3 sets, it requires 6 pixels on
+      // the texture report its result (3 indices + 3 values). To fit 6 pixels,
+      // we need a square of side 4; side 2 isn't enough because it only fits 4
+      // pixels, side 3 isn't allowed because such a square wouldn't align
+      // correctly on the texture. 
+      // TODO: complete this explanation, move it to the top, make some drawings
       var usedResults = setters.length;
-      var maxResults = Math.pow(fitTextureSide(usedResults*2),2)/2;
+      var allocResults = Math.pow(fitTextureSide(usedResults*2),2)/2;
 
       var getters = "";
       for (var i=0, l=arrays.length; i<l; ++i)
@@ -438,7 +497,7 @@ load(this, function (exports) {
           +  "}\n";
 
       var setterFns = "";
-      for (var i=0; i<maxResults; ++i){
+      for (var i=0; i<allocResults; ++i){
         setterFns += "void set"+i+"(int i"+i+", int d"+i+", float v"+i+"){\n";
         setterFns += "  results["+(i*2+0)+"] = packIndexDepth(i"+i+"+1, d"+i+");\n"
         setterFns += "  results["+(i*2+1)+"] = packFloat(v"+i+");\n"
@@ -450,11 +509,11 @@ load(this, function (exports) {
       };
 
       var writeToTexture = "";
-      for (var i=0; i<maxResults*2; ++i)
+      for (var i=0; i<allocResults*2; ++i)
         writeToTexture += "  if (idx == "+i+") gl_FragColor = results["+i+"];\n";
 
       var setter = "";
-      for (var i=0; i < maxResults; ++i){
+      for (var i=0; i < allocResults; ++i){
         setter += "  set"+i+"(";
         setter += i < usedResults
           ? setters[i].index+", "
@@ -471,7 +530,7 @@ load(this, function (exports) {
         "uniform float resultSquareSide;",
         "attribute float resultIndex;",
         "varying float resultIndexVar;",
-        "varying vec4 results["+(maxResults*2)+"];",
+        "varying vec4 results["+(allocResults*2)+"];",
         defaultLib,
         getters,
         setterFns,
@@ -493,7 +552,7 @@ load(this, function (exports) {
       var fragmentShader = [
         "precision highp float;",
         "varying float resultIndexVar;",
-        "varying vec4 results["+(maxResults*2)+"];",
+        "varying vec4 results["+(allocResults*2)+"];",
         "uniform float resultSquareSide;",
         defaultLib,
         "void main(){",
@@ -506,44 +565,45 @@ load(this, function (exports) {
 
         return shaderByTask[task] = {
           usesDepth: usesDepth,
+          usedResults: usedResults,
+          allocResults: allocResults,
           shader: shader,
-          maxResults: maxResults,
           resultArrayName: resultArrayName};
     };
 
     // *Monkeys => Number, String -> Monkeys
-    function work(monkeyCount, task){
-      var shaderObject = buildShaderForTask(task);
-      var shader = shaderObject.shader;
-      var maxResults = shaderObject.maxResults;
-      var resultArrayName = shaderObject.resultArrayName;
-      var usesDepth = shaderObject.usesDepth;
-
-      var output = arrayByName[resultArrayName];
-
-      var resultSquareSide = fitTextureSide(maxResults*2);
+    function work(monkeyCount, taskSource){
+      var task = buildTask(taskSource);
+      var resultArray = arrayByName[task.resultArrayName];
+      var resultSquareSide = fitTextureSide(task.allocResults*2);
+      var resultGridSide = fitTextureSide(monkeyCount);
+      var usedResultTextureSide = resultGridSide * resultSquareSide;
+      var resultSquareSide = fitTextureSide(task.allocResults*2);
       var resultGridSide = fitTextureSide(monkeyCount);
       var usedResultTextureSide = resultGridSide * resultSquareSide;
 
-      gl.useProgram(shader);
-      gl.bindBuffer(gl.ARRAY_BUFFER, rangebuffer);
+      allocResultTexture(usedResultTextureSide);
+      allocVertexIndices(Math.max(monkeyCount, monkeyCount*resultSquareSide*resultSquareSide/2));
+
+      gl.useProgram(task.shader);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexIndexBuffer);
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-      gl.uniform1f(gl.getUniformLocation(shader,"resultGridSide"), resultGridSide);
-      gl.uniform1f(gl.getUniformLocation(shader,"resultSquareSide"), resultSquareSide);
-      gl.uniform1f(gl.getUniformLocation(shader,"resultTextureSide"), resultTextureSide);
-      gl.vertexAttribPointer(gl.getAttribLocation(shader,"resultIndex"), 1, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(gl.getAttribLocation(shader,"resultIndex"));
+      gl.uniform1f(gl.getUniformLocation(task.shader,"resultGridSide"), resultGridSide);
+      gl.uniform1f(gl.getUniformLocation(task.shader,"resultSquareSide"), resultSquareSide);
+      gl.uniform1f(gl.getUniformLocation(task.shader,"resultTextureSide"), resultTextureSide);
+      gl.vertexAttribPointer(gl.getAttribLocation(task.shader,"resultIndex"), 1, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(gl.getAttribLocation(task.shader,"resultIndex"));
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, resultTexture, 0);
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
       gl.viewport(0, 0, resultTextureSide, resultTextureSide);
       for (var i=0, l=arrays.length; i<l; ++i){
         gl.activeTexture(gl.TEXTURE0+i);
         gl.bindTexture(gl.TEXTURE_2D, arrays[i].texture);
-        gl.uniform1i(gl.getUniformLocation(shader,arrays[i].textureName), i);
+        gl.uniform1i(gl.getUniformLocation(task.shader,arrays[i].textureName), i);
       }
       gl.drawArrays(gl.POINTS, 0, monkeyCount);
 
-      if (usesDepth) gl.enable(gl.DEPTH_TEST);
+      if (task.usesDepth) gl.enable(gl.DEPTH_TEST);
       gl.useProgram(writer);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, resultTexture);
@@ -551,17 +611,17 @@ load(this, function (exports) {
       gl.uniform1f(gl.getUniformLocation(writer,"resultGridSide"), resultGridSide);
       gl.uniform1f(gl.getUniformLocation(writer,"resultSquareSide"), resultSquareSide);
       gl.uniform1f(gl.getUniformLocation(writer,"resultTextureSide"), resultTextureSide);
-      gl.uniform1f(gl.getUniformLocation(writer,"targetTextureSide"), output.textureSide);
+      gl.uniform1f(gl.getUniformLocation(writer,"targetTextureSide"), resultArray.textureSide);
       gl.vertexAttribPointer(gl.getAttribLocation(writer,"resultIndex"), 1, gl.FLOAT, false, 0, 0);
       gl.enableVertexAttribArray(gl.getAttribLocation(writer,"resultIndex"));
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, output.texture, 0);
-      gl.viewport(0, 0, output.textureSide, output.textureSide);
-      if (usesDepth){
-        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, output.depthbuffer);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, resultArray.texture, 0);
+      gl.viewport(0, 0, resultArray.textureSide, resultArray.textureSide);
+      if (task.usesDepth){
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, resultArray.depthbuffer);
         gl.clear(gl.DEPTH_BUFFER_BIT)
       };
       gl.drawArrays(gl.POINTS, 0, monkeyCount*resultSquareSide*resultSquareSide/2);
-      if (usesDepth) gl.disable(gl.DEPTH_TEST);
+      if (task.usesDepth) gl.disable(gl.DEPTH_TEST);
       return monkeysApi;
     };
 
@@ -612,6 +672,7 @@ load(this, function (exports) {
       lib: lib,
       work: work,
       clear: clear,
+      fill: fill,
       render: render,
       stringify: stringify,
       log: log
