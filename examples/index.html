@@ -12,9 +12,10 @@
 		// i.e 
 		// https://rawgit.com/MaiaVictor/WebMonkeys/master/examples/index.html?example=squareNumbers.js
 		var example = window.location.search.split('?example=')[1];
+		var source = example ? './'+example : './searchFor987654321.js';
 		var script = document.createElement('script');
 		document.head.appendChild(script);
-		script.src = './'+example;
+		script.src = source;
 	</script>
 </body>
 </html>
