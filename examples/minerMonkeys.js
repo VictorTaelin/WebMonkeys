@@ -74,17 +74,12 @@ function mineParallel(totalMonkeys, attemptsPerMonkey, blockhash){
 };
 
 // Mine the block on the CPU
-var t = Date.now();
-console.log("Mined a block on the CPU, nonce: " + mineSequential(12345, 5) +
-            " (time: " + (Date.now() - t) / 1000 + "s)");
+console.log("Mined a block on the CPU, nonce: "+mineSequential(12345));
 
 // Mine the block on the GPU, with 128 monkeys,
 // each one attempting 6000 different nonces,
 // starting at nonce 0.
-t = Date.now();
-console.log("Mined a block on the GPU, nonce: " +
-            mineParallel(128, 6000, 12345) + " (time: " +
-            (Date.now() - t) / 1000 + "s)");
+console.log("Mined a block on the GPU, nonce: "+mineParallel(128, 6000, 12345));
 
 // Note: on the GPU, mod(a*b, c) fails when `a`
 // and `b` are big. I couldn't test harder examples
