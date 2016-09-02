@@ -1,4 +1,4 @@
-if (typeof window === 'object') 
+if (typeof window === 'object')
   var monkeys = WebMonkeys();
 else
   var monkeys = require("./../src/WebMonkeys")();
@@ -21,7 +21,7 @@ function mineSequential(blockhash){
   return 0;
 };
 
-// To do that in parallel, we just spawn tons of monkeys 
+// To do that in parallel, we just spawn tons of monkeys
 // and make them try different nonces at the same time.
 function mineParallel(totalMonkeys, attemptsPerMonkey, blockhash){
 
@@ -35,7 +35,7 @@ function mineParallel(totalMonkeys, attemptsPerMonkey, blockhash){
   // Each monkey attempts a a different set of
   // nonces, so we upload an array determining
   // the start nonce of each monkey.
-  var monkeyNonce = [];  
+  var monkeyNonce = [];
   for (var i = 0; i < totalMonkeys; ++i)
     monkeyNonce.push(i * attemptsPerMonkey);
   monkeys.set("monkeyNonce", monkeyNonce);
@@ -51,7 +51,8 @@ function mineParallel(totalMonkeys, attemptsPerMonkey, blockhash){
     // Do the actual mining work, restricted to the subset
     // of nonces this monkey is responsible for
     float mined = 0.0;
-    for (float nonce = startNonce; nonce < startNonce+attempts; ++nonce){
+    for (float nonce0 = 0.0; nonce0 < attempts; ++nonce0){
+      float nonce = nonce0 + startNonce;
       float hash = mod(bhash * (nonce+1.0), pow(2.0,31.0) - 1.0);
       if (hash >= 0.0 && hash <= 3000.0)
         mined = nonce;
@@ -73,7 +74,7 @@ function mineParallel(totalMonkeys, attemptsPerMonkey, blockhash){
 };
 
 // Mine the block on the CPU
-console.log("Mined a block on the CPU, nonce: "+mineSequential(12345, 5));
+console.log("Mined a block on the CPU, nonce: "+mineSequential(12345));
 
 // Mine the block on the GPU, with 128 monkeys,
 // each one attempting 6000 different nonces,
