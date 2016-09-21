@@ -60,7 +60,7 @@ load(this, function (exports) {
         "  if (m<0.0) s=1.0, m=-m;",
         "  for (int i=0; i<24; ++i){",
         "    if (m>=2.0) m=m/2.0, e+=1.0;",
-        "    if (m< 1.0) m=m/2.0, e-=1.0;",
+        "    if (m< 1.0) m=m*2.0, e-=1.0;",
         "    if (m>=1.0 && m<2.0) break;",
         "  };",
         "  return vec4(",
