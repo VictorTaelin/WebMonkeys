@@ -357,8 +357,8 @@ load(this, function (exports) {
     // *Monkeys => String -> Monkeys
     function del(name){
       var existingArray;
-      if (existingArray = arraysByName[name]){
-        delete arraysByName[name];
+      if (existingArray = arrayByName[name]){
+        delete arrayByName[name];
         arrays = arrays.filter(function(arr){
           return arr !== existingArray;
         });
