@@ -25,10 +25,21 @@ load(this, function (exports) {
       shaderByTask = {};
 
       var glOpt = {antialias: false, preserveDrawingBuffer: true};
-      if (typeof window === "undefined"){
+      
+      var ENVIRONMENT_IS_WEB = typeof window === 'object';
+      var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+      var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
+      
+      if (ENVIRONMENT_IS_NODE) {
         gl = require("g"+"l")(1, 1, glOpt);
       } else {
-        var canvas = document.createElement("canvas");
+        var canvas
+        if (ENVIRONMENT_IS_WEB) {
+          canvas = document.createElement("canvas");
+        }
+        if (ENVIRONMENT_IS_WORKER) {
+          canvas = new OffscreenCanvas(1, 1);
+        }
         gl = canvas.getContext('webgl', glOpt) || canvas.getContext('experimental-webgl', glOpt);
         gl.canvas = canvas;
         gl.canvas.width = 1;
