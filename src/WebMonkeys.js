@@ -243,7 +243,7 @@ load(this, function (exports) {
     };
 
     // *Monkeys => String -> Maybe (Either (Array Number) *Uint32Array)
-    function get(name){
+    function _get(name, asFloat32){
       var array = arrayByName[name];
       if (!array) return null;
       var targetArray = array.uint32Array;
@@ -255,20 +255,33 @@ load(this, function (exports) {
       gl.readPixels(0, 0, array.textureSide, array.textureSide, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
       if (!targetArray){
-        var result = [];
+        var result = (asFloat32 ? new Float32Array(array.length) : []);
         for (var i=0, l=array.length; i<l; ++i){
           var s = pixels[i*4+3] >= 128 ? 1 : -1;
           var e = pixels[i*4+3] - (pixels[i*4+3] >= 128 ? 128 : 0) - 63;
           var m = 1 + pixels[i*4+0]/256/256/256 + pixels[i*4+1]/256/256 + pixels[i*4+2]/256;
           var n = s * Math.pow(2, e) * m;
           var z = 0.000000000000000001; // to avoid annoying floating point error for 0
-          result.push(-z < n && n < z ? 0 : n);
+          var r = (-z < n && n < z ? 0 : n);
+          if(asFloat32) {
+            result[i] = r;
+          } else {
+            result.push(r);
+          }
         };
         return result;
       } else {
         return targetArray;
       }
     };
+
+    function getFloat32Array(name) {
+      return _get(name, true);
+    }
+
+    function get(name) {
+      return _get(name, false);
+    }
 
     // *Monkeys => String, *Uint32Array -> Monkeys
     // *Monkeys => String, Array Number -> Monkeys
@@ -679,6 +692,7 @@ load(this, function (exports) {
     var monkeysApi = {
       set: set,
       get: get,
+      getFloat32Array: getFloat32Array,
       del: del,
       lib: lib,
       work: work,
