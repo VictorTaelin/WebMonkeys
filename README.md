@@ -5,14 +5,15 @@ Allows you to spawn thousands of parallel tasks on the GPU with the simplest, du
 ### Usage
 
 On the browser, add `<script src="WebMonkeys.js"><script>` to your HTML. On Node.js, install it from npm:
-
-    npm install webmonkeys
+```bash
+npm install webmonkeys --save
+```
 
 The example below uses the GPU to square all numbers in an array in parallel:
 
 ```javascript
 // Creates a WebMonkeys object
-var monkeys = require("WebMonkeys")(); // on the browser, call WebMonkeys() instead
+const monkeys = require("WebMonkeys")(); // on the browser, call WebMonkeys() instead
 
 // Sends an array of numbers to the GPU
 monkeys.set("nums", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
@@ -34,7 +35,7 @@ More elaborate algorithms can be developed with GLSL.
 
 - Vector multiplication:
 
-    ```JavaScript
+    ```javaScript
     monkeys.set("a", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
     monkeys.set("b", [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]);
     monkeys.set("c", 16); // use a number to just alloc an array
@@ -47,7 +48,7 @@ More elaborate algorithms can be developed with GLSL.
 
 - Crypto-currency mining:
 
-    ```JavaScript
+    ```javaScript
     monkeys.set("blockhash", [blockhash]);
     monkeys.set("monkeyNonce", monkeyNonce);
     monkeys.set("result", [0]);
