@@ -255,14 +255,14 @@ load(this, function (exports) {
       gl.readPixels(0, 0, array.textureSide, array.textureSide, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
       if (!targetArray){
-        var result = [];
+        var result = new Float32Array(array.length);
         for (var i=0, l=array.length; i<l; ++i){
           var s = pixels[i*4+3] >= 128 ? 1 : -1;
           var e = pixels[i*4+3] - (pixels[i*4+3] >= 128 ? 128 : 0) - 63;
           var m = 1 + pixels[i*4+0]/256/256/256 + pixels[i*4+1]/256/256 + pixels[i*4+2]/256;
           var n = s * Math.pow(2, e) * m;
           var z = 0.000000000000000001; // to avoid annoying floating point error for 0
-          result.push(-z < n && n < z ? 0 : n);
+	  result[i] = (-z < n && n < z ? 0 : n);
         };
         return result;
       } else {
