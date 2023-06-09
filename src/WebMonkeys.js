@@ -281,7 +281,7 @@ load(this, function (exports) {
       } else {
         var length = lengthOrArray.length;
         var textureSide = fitTextureSide(length);
-        if (lengthOrArray instanceof Array) { // upload JS Numbers as Floats
+        if (lengthOrArray instanceof Array || lengthOrArray instanceof Float32Array) { // upload JS Numbers as Floats
           var array = new Uint8Array(textureSide*textureSide*4);
           for (var i=0, l=lengthOrArray.length; i<l; ++i){ 
             var x = lengthOrArray[i];
